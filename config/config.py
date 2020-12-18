@@ -7,6 +7,8 @@ class Config:
         self._api_id = int(os.getenv('API_ID'))
         self._api_hash = os.getenv('API_HASH')
         self._bot_token = os.getenv('BOT_TOKEN')
+        self._super_admin_id = int(os.getenv('SUPER_ADMIN_ID'))
+        self._delete_delay = int(os.getenv('DELETE_DELAY', 30))
 
     @property
     def api_id(self):
@@ -19,3 +21,11 @@ class Config:
     @property
     def bot_token(self):
         return self._bot_token
+
+    @property
+    def super_admin_id(self):
+        return self._super_admin_id
+
+    @property
+    def delete_delay(self):
+        return self._delete_delay
