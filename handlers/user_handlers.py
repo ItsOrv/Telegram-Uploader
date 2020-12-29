@@ -1,4 +1,5 @@
 from telethon import events, Button
+from telethon.tl.functions.channels import GetParticipantRequest
 from config.logger_config import logger
 from utils.keyboards import Keyboards
 
