@@ -1,4 +1,5 @@
 import hashlib
+import json
 from config.logger_config import logger
 
 class Save:
@@ -19,9 +20,12 @@ class Save:
             sent_message = await self.bot.send_file(group_id, file)
 
             file_id = str(sent_message.id)
+            raw = f"{file_id}{group_id}{user_id}"
+            hash_file = hashlib.md5(raw.encode()).hexdigest()
             return {
                 'file_id': file_id,
                 'group_id': str(group_id),
+                'hash_file': hash_file,
                 'file_name': file.name,
                 'file_size': file.size,
                 'mime_type': file.mime_type,
