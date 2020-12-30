@@ -22,6 +22,12 @@ class DatabaseManager:
             group_id INTEGER,
             group_backup_id INTEGER
         )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS downloads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            file_id TEXT,
+            download_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""")
         c.execute("""CREATE TABLE IF NOT EXISTS files (
             file_id TEXT PRIMARY KEY,
             file_name TEXT,
@@ -84,6 +90,11 @@ class DatabaseManager:
             return {'file_id': row[0], 'file_name': row[1], 'hash_file': row[2],
                     'group_id': row[3], 'admin_id': row[4]}
         return None
+
+    def add_file_download(self, user_id, file_id):
+        c = self.conn.cursor()
+        c.execute("INSERT INTO downloads (user_id, file_id) VALUES (?, ?)", (user_id, file_id))
+        self.conn.commit()
 
     def get_required_channels(self):
         return []
