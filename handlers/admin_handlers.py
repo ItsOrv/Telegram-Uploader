@@ -31,9 +31,13 @@ class AdminHandlers:
 
     async def upload_file_admin(self, event):
         admin_id = event.sender_id
+        if not self.db.is_admin(admin_id):
+            await event.edit("شما دسترسی ندارید.")
+            return
+
         admin_info = self.db.get_admin(admin_id)
-        if not admin_info or not admin_info.get('group_id'):
-            await event.edit("ابتدا گروه اصلی را ست کنید.")
+        if not admin_info or not admin_info.get('group_id') or not admin_info.get('group_backup_id'):
+            await event.edit("ابتدا گروه اصلی و بکاپ را ست کنید.")
             return
 
         await event.edit("فایل را ارسال کنید:")
