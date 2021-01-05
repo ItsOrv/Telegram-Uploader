@@ -98,7 +98,7 @@ class DatabaseManager:
 
     def get_user_downloads(self, user_id):
         c = self.conn.cursor()
-        c.execute("SELECT * FROM downloads WHERE user_id = ?", (user_id,))
+        c.execute("SELECT f.* FROM files f JOIN downloads d ON f.file_id = d.file_id WHERE d.user_id = ?", (user_id,))
         return c.fetchall()
 
     def get_required_channels(self):
