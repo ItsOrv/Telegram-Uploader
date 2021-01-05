@@ -96,5 +96,10 @@ class DatabaseManager:
         c.execute("INSERT INTO downloads (user_id, file_id) VALUES (?, ?)", (user_id, file_id))
         self.conn.commit()
 
+    def get_user_downloads(self, user_id):
+        c = self.conn.cursor()
+        c.execute("SELECT * FROM downloads WHERE user_id = ?", (user_id,))
+        return c.fetchall()
+
     def get_required_channels(self):
         return []
