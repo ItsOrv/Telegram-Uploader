@@ -28,6 +28,10 @@ class SuperAdminHandlers:
             await self.add_admin(event)
         elif command == "remove_admin":
             await self.remove_admin(event)
+        elif command == "ban_user":
+            await self.ban_user_prompt(event)
+        elif command == "unban_user":
+            await self.unban_user_prompt(event)
 
     async def manage_admins(self, event):
         admins = self.db.get_all_admins() or []
@@ -55,3 +59,24 @@ class SuperAdminHandlers:
     async def remove_admin(self, event):
         await event.edit("آیدی ادمین را ارسال کنید:",
                          buttons=[Button.inline("انصراف", b"cancel_remove_admin")])
+
+    async def ban_user_prompt(self, event):
+        await event.edit("آیدی کاربر را برای بن کردن ارسال کنید:",
+                         buttons=[Button.inline("انصراف", b"cancel_ban_user")])
+        self.bot.add_event_handler(self._handle_ban_input, __import__('telethon').events.NewMessage(
+            from_users=event.sender_id, incoming=True))
+
+    async def _handle_ban_input(self, event):
+        self.bot.remove_event_handler(self._handle_ban_input)
+        try:
+            user_id = int(event.text)
+            self.db.ban_user(user_id)
+            await event.respond(f"کاربر {user_id} بن شد.")
+        except ValueError:
+            await event.respond("آیدی معتبر نیست.")
+        except Exception as e:
+            await event.respond(f"خطا: {e}")
+
+    async def unban_user_prompt(self, event):
+        await event.edit("آیدی کاربر را برای رفع بن ارسال کنید:",
+                         buttons=[Button.inline("انصراف", b"cancel_unban_user")])

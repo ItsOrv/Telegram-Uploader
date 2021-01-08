@@ -101,5 +101,36 @@ class DatabaseManager:
         c.execute("SELECT f.* FROM files f JOIN downloads d ON f.file_id = d.file_id WHERE d.user_id = ?", (user_id,))
         return c.fetchall()
 
+    def is_banned(self, user_id):
+        c = self.conn.cursor()
+        c.execute("SELECT 1 FROM banned_users WHERE user_id = ?", (user_id,))
+        return bool(c.fetchone())
+
+    def ban_user(self, user_id, reason=None):
+        c = self.conn.cursor()
+        c.execute("INSERT OR IGNORE INTO banned_users (user_id, ban_reason) VALUES (?, ?)",
+                  (user_id, reason))
+        self.conn.commit()
+
+    def unban_user(self, user_id):
+        c = self.conn.cursor()
+        c.execute("DELETE FROM banned_users WHERE user_id = ?", (user_id,))
+        self.conn.commit()
+
+    def get_all_admins(self):
+        c = self.conn.cursor()
+        c.execute("SELECT * FROM admins")
+        return c.fetchall()
+
+    def get_all_users(self):
+        c = self.conn.cursor()
+        c.execute("SELECT * FROM users")
+        return c.fetchall()
+
+    def remove_admin(self, user_id):
+        c = self.conn.cursor()
+        c.execute("DELETE FROM admins WHERE user_id = ?", (user_id,))
+        self.conn.commit()
+
     def get_required_channels(self):
         return []
