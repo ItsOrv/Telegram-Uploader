@@ -107,8 +107,12 @@ class DatabaseManager:
         return bool(c.fetchone())
 
     def ban_user(self, user_id, reason=None):
+        if not self.get_user(user_id):
+            raise ValueError("user not found")
+        if self.is_banned(user_id):
+            raise ValueError("already banned")
         c = self.conn.cursor()
-        c.execute("INSERT OR IGNORE INTO banned_users (user_id, ban_reason) VALUES (?, ?)",
+        c.execute("INSERT INTO banned_users (user_id, ban_reason) VALUES (?, ?)",
                   (user_id, reason))
         self.conn.commit()
 
