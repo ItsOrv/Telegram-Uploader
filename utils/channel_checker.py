@@ -4,8 +4,10 @@ from config.logger_config import logger
 
 async def check_channel_membership(bot, user_id, channel_id):
     try:
-        participant = await bot(GetParticipantRequest(channel_id, user_id))
-        return isinstance(participant.participant, ChannelParticipant)
+        result = await bot(GetParticipantRequest(channel_id, user_id))
+        if result and result.participant:
+            return isinstance(result.participant, ChannelParticipant)
+        return False
     except Exception as e:
-        logger.error(f"channel check error: {e}")
+        logger.debug(f"channel check: user {user_id} not in {channel_id}: {e}")
         return False
