@@ -31,3 +31,12 @@ CREATE TABLE IF NOT EXISTS banned_users (
     ban_reason TEXT,
     ban_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS required_channels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    channel_id TEXT NOT NULL UNIQUE,
+    channel_username TEXT,
+    channel_title TEXT,
+    is_active INTEGER DEFAULT 1,
+    added_by INTEGER
+);
