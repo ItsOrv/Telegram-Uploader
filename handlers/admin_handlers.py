@@ -45,5 +45,20 @@ class AdminHandlers:
     async def delete_file_admin(self, event):
         await event.edit("هش فایل را ارسال کنید:")
 
+    async def add_required_channel(self, event):
+        await event.edit("یوزرنیم کانال را ارسال کنید:")
+
+    async def set_main_group(self, event):
+        group_id = event.chat_id
+        admin_id = event.sender_id
+        self.db.update_admin_group(admin_id, group_id=group_id)
+        await event.respond("گروه اصلی ست شد.")
+
+    async def set_backup_group(self, event):
+        group_id = event.chat_id
+        admin_id = event.sender_id
+        self.db.update_admin_group(admin_id, backup_group_id=group_id)
+        await event.respond("گروه بکاپ ست شد.")
+
     async def cancel(self, event):
         await event.edit("لغو شد.", buttons=self.keyboards.get_admin_panel_buttons())
