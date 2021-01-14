@@ -136,5 +136,28 @@ class DatabaseManager:
         c.execute("DELETE FROM admins WHERE user_id = ?", (user_id,))
         self.conn.commit()
 
+    def get_admin_stats(self, admin_id):
+        c = self.conn.cursor()
+        c.execute("SELECT COUNT(*) as total_files FROM files WHERE admin_id = ?", (admin_id,))
+        row = c.fetchone()
+        return {'total_files': row[0] if row else 0}
+
+    def get_system_stats(self):
+        c = self.conn.cursor()
+        c.execute("SELECT COUNT(*) FROM users")
+        users = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM files")
+        files = c.fetchone()[0]
+        return {'total_users': users, 'total_files': files}
+
+    def add_required_channel(self, channel_id, channel_username, channel_title, added_by):
+        c = self.conn.cursor()
+        c.execute("INSERT OR IGNORE INTO required_channels (channel_id, channel_username, channel_title, added_by) VALUES (?, ?, ?, ?)",
+                  (channel_id, channel_username, channel_title, added_by))
+        self.conn.commit()
+
     def get_required_channels(self):
-        return []
+        c = self.conn.cursor()
+        c.execute("SELECT * FROM required_channels WHERE is_active = 1")
+        rows = c.fetchall()
+        return [{'channel_id': r[1], 'channel_username': r[2], 'channel_title': r[3]} for r in rows]
