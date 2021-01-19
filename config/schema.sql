@@ -1,42 +1,64 @@
-CREATE TABLE IF NOT EXISTS users (
-    user_id INTEGER PRIMARY KEY,
-    has_access INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+DROP DATABASE IF EXISTS telegram_uploader;
+CREATE DATABASE telegram_uploader;
+USE telegram_uploader;
+
+-- Create tables first without foreign keys
+CREATE TABLE IF NOT EXISTS admins (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL UNIQUE,
+    group_id BIGINT,
+    group_backup_id BIGINT
 );
 
-CREATE TABLE IF NOT EXISTS admins (
-    user_id INTEGER PRIMARY KEY,
-    group_id INTEGER,
-    group_backup_id INTEGER
+CREATE TABLE IF NOT EXISTS groups_info (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    group_id BIGINT NOT NULL UNIQUE,
+    group_name VARCHAR(255) NOT NULL,
+    group_type ENUM('primary', 'backup') NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS files (
-    file_id TEXT PRIMARY KEY,
-    file_name TEXT,
-    hash_file TEXT,
-    group_id INTEGER,
-    admin_id INTEGER,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    file_id VARCHAR(255) NOT NULL UNIQUE,
+    hash_file VARCHAR(255),
+    admin_id BIGINT NOT NULL,
+    group_id BIGINT NOT NULL,
+    backup_group_id BIGINT NOT NULL,
+    file_name VARCHAR(255),
+    file_size BIGINT NOT NULL,
+    download_link TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_files_admin_id (admin_id),
+    INDEX idx_files_group_id (group_id),
+    CONSTRAINT files_admin_fk FOREIGN KEY (admin_id) REFERENCES admins(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL UNIQUE,
+    has_access BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS downloads (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    file_id TEXT,
+CREATE TABLE IF NOT EXISTS downloaded_files (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    file_id VARCHAR(255) NOT NULL,
     download_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS banned_users (
-    user_id INTEGER PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL UNIQUE,
     ban_reason TEXT,
     ban_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS required_channels (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    channel_id TEXT NOT NULL UNIQUE,
-    channel_username TEXT,
-    channel_title TEXT,
-    is_active INTEGER DEFAULT 1,
-    added_by INTEGER
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    channel_id VARCHAR(255) NOT NULL UNIQUE,
+    channel_username VARCHAR(255),
+    channel_title VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    added_by BIGINT
 );
