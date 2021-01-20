@@ -20,8 +20,14 @@ class DatabaseManager:
             database=self.config.mysql_database
         )
 
+    def reconnect(self):
+        if not self.connection or not self.connection.is_connected():
+            self.connect()
+
     def execute_query(self, query, params=None):
         try:
+            if not self.connection.is_connected():
+                self.reconnect()
             with self.connection.cursor(dictionary=True) as cursor:
                 cursor.execute(query, params)
                 if query.strip().upper().startswith('SELECT'):
