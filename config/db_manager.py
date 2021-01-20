@@ -1,163 +1,129 @@
-import sqlite3
+import mysql.connector
+from mysql.connector import Error
 import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 class DatabaseManager:
-    def __init__(self, db_path='bot.db'):
-        self.db_path = db_path
-        self.conn = sqlite3.connect(db_path, check_same_thread=False)
-        self._init_db()
+    def __init__(self, config):
+        self.config = config
+        self.connection = None
+        self.connect()
 
-    def _init_db(self):
-        c = self.conn.cursor()
-        c.execute("""CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            has_access INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )""")
-        c.execute("""CREATE TABLE IF NOT EXISTS admins (
-            user_id INTEGER PRIMARY KEY,
-            group_id INTEGER,
-            group_backup_id INTEGER
-        )""")
-        c.execute("""CREATE TABLE IF NOT EXISTS downloads (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            file_id TEXT,
-            download_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )""")
-        c.execute("""CREATE TABLE IF NOT EXISTS files (
-            file_id TEXT PRIMARY KEY,
-            file_name TEXT,
-            hash_file TEXT,
-            group_id INTEGER,
-            admin_id INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )""")
-        self.conn.commit()
+    def connect(self):
+        self.connection = mysql.connector.connect(
+            host=self.config.mysql_host,
+            port=self.config.mysql_port,
+            user=self.config.mysql_user,
+            password=self.config.mysql_password,
+            database=self.config.mysql_database
+        )
+
+    def execute_query(self, query, params=None):
+        try:
+            with self.connection.cursor(dictionary=True) as cursor:
+                cursor.execute(query, params)
+                if query.strip().upper().startswith('SELECT'):
+                    return cursor.fetchall()
+                self.connection.commit()
+                return None
+        except Error as e:
+            print(f"DB error: {e}")
+            raise
 
     def add_user(self, user_id, has_access=False):
-        c = self.conn.cursor()
-        c.execute("INSERT OR IGNORE INTO users (user_id, has_access) VALUES (?, ?)",
-                  (user_id, int(has_access)))
-        self.conn.commit()
+        self.execute_query("INSERT IGNORE INTO users (user_id, has_access) VALUES (%s, %s)",
+                          (user_id, has_access))
 
     def get_user(self, user_id):
-        c = self.conn.cursor()
-        c.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-        row = c.fetchone()
-        return {'user_id': row[0], 'has_access': bool(row[1])} if row else None
+        result = self.execute_query("SELECT * FROM users WHERE user_id = %s", (user_id,))
+        return result[0] if result else None
 
     def update_user_access(self, user_id, has_access):
-        c = self.conn.cursor()
-        c.execute("UPDATE users SET has_access = ? WHERE user_id = ?",
-                  (int(has_access), user_id))
-        self.conn.commit()
+        self.execute_query("UPDATE users SET has_access = %s WHERE user_id = %s",
+                          (has_access, user_id))
 
     def is_admin(self, user_id):
-        c = self.conn.cursor()
-        c.execute("SELECT 1 FROM admins WHERE user_id = ?", (user_id,))
-        return bool(c.fetchone())
+        result = self.execute_query("SELECT 1 FROM admins WHERE user_id = %s", (user_id,))
+        return bool(result)
 
     def add_admin(self, user_id, group_id=None, group_backup_id=None):
-        c = self.conn.cursor()
-        c.execute("INSERT OR IGNORE INTO admins VALUES (?, ?, ?)",
-                  (user_id, group_id, group_backup_id))
-        self.conn.commit()
+        if self.is_admin(user_id):
+            raise ValueError("already an admin")
+        self.execute_query("INSERT INTO admins (user_id, group_id, group_backup_id) VALUES (%s, %s, %s)",
+                          (user_id, group_id, group_backup_id))
 
     def get_admin(self, user_id):
-        c = self.conn.cursor()
-        c.execute("SELECT * FROM admins WHERE user_id = ?", (user_id,))
-        row = c.fetchone()
-        return {'user_id': row[0], 'group_id': row[1], 'group_backup_id': row[2]} if row else None
+        result = self.execute_query("SELECT * FROM admins WHERE user_id = %s", (user_id,))
+        return result[0] if result else None
 
-    def get_file(self, file_id):
-        c = self.conn.cursor()
-        c.execute("SELECT * FROM files WHERE file_id = ?", (file_id,))
-        row = c.fetchone()
-        if row:
-            return {'file_id': row[0], 'file_name': row[1], 'hash_file': row[2],
-                    'group_id': row[3], 'admin_id': row[4]}
-        return None
+    def remove_admin(self, user_id):
+        if not self.is_admin(user_id):
+            raise ValueError("not an admin")
+        self.execute_query("DELETE FROM admins WHERE user_id = %s", (user_id,))
 
-    def get_file_by_hash(self, file_hash):
-        c = self.conn.cursor()
-        c.execute("SELECT * FROM files WHERE hash_file = ?", (file_hash,))
-        row = c.fetchone()
-        if row:
-            return {'file_id': row[0], 'file_name': row[1], 'hash_file': row[2],
-                    'group_id': row[3], 'admin_id': row[4]}
-        return None
+    def get_all_admins(self):
+        return self.execute_query("SELECT * FROM admins ORDER BY id DESC") or []
 
-    def add_file_download(self, user_id, file_id):
-        c = self.conn.cursor()
-        c.execute("INSERT INTO downloads (user_id, file_id) VALUES (?, ?)", (user_id, file_id))
-        self.conn.commit()
-
-    def get_user_downloads(self, user_id):
-        c = self.conn.cursor()
-        c.execute("SELECT f.* FROM files f JOIN downloads d ON f.file_id = d.file_id WHERE d.user_id = ?", (user_id,))
-        return c.fetchall()
+    def get_all_users(self):
+        return self.execute_query("SELECT * FROM users") or []
 
     def is_banned(self, user_id):
-        c = self.conn.cursor()
-        c.execute("SELECT 1 FROM banned_users WHERE user_id = ?", (user_id,))
-        return bool(c.fetchone())
+        result = self.execute_query("SELECT 1 FROM banned_users WHERE user_id = %s", (user_id,))
+        return bool(result)
 
     def ban_user(self, user_id, reason=None):
         if not self.get_user(user_id):
             raise ValueError("user not found")
         if self.is_banned(user_id):
             raise ValueError("already banned")
-        c = self.conn.cursor()
-        c.execute("INSERT INTO banned_users (user_id, ban_reason) VALUES (?, ?)",
-                  (user_id, reason))
-        self.conn.commit()
+        self.execute_query("INSERT INTO banned_users (user_id, ban_reason) VALUES (%s, %s)",
+                          (user_id, reason))
 
     def unban_user(self, user_id):
-        c = self.conn.cursor()
-        c.execute("DELETE FROM banned_users WHERE user_id = ?", (user_id,))
-        self.conn.commit()
+        if not self.is_banned(user_id):
+            raise ValueError("not banned")
+        self.execute_query("DELETE FROM banned_users WHERE user_id = %s", (user_id,))
 
-    def get_all_admins(self):
-        c = self.conn.cursor()
-        c.execute("SELECT * FROM admins")
-        return c.fetchall()
+    def add_file(self, file_id, user_id, file_name, file_size, mime_type, uploader_id, caption=None):
+        self.execute_query("""INSERT INTO files (file_id, user_id, file_name, file_size, mime_type, uploader_id, caption)
+                              VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                          (file_id, user_id, file_name, file_size, mime_type, uploader_id, caption))
 
-    def get_all_users(self):
-        c = self.conn.cursor()
-        c.execute("SELECT * FROM users")
-        return c.fetchall()
+    def get_file(self, file_id):
+        result = self.execute_query("SELECT * FROM files WHERE file_id = %s", (file_id,))
+        return result[0] if result else None
 
-    def remove_admin(self, user_id):
-        c = self.conn.cursor()
-        c.execute("DELETE FROM admins WHERE user_id = ?", (user_id,))
-        self.conn.commit()
+    def get_file_by_hash(self, file_hash):
+        result = self.execute_query("SELECT * FROM files WHERE hash_file = %s", (file_hash,))
+        return result[0] if result else None
 
-    def get_admin_stats(self, admin_id):
-        c = self.conn.cursor()
-        c.execute("SELECT COUNT(*) as total_files FROM files WHERE admin_id = ?", (admin_id,))
-        row = c.fetchone()
-        return {'total_files': row[0] if row else 0}
-
-    def get_system_stats(self):
-        c = self.conn.cursor()
-        c.execute("SELECT COUNT(*) FROM users")
-        users = c.fetchone()[0]
-        c.execute("SELECT COUNT(*) FROM files")
-        files = c.fetchone()[0]
-        return {'total_users': users, 'total_files': files}
+    def add_file_download(self, user_id, file_id):
+        self.execute_query("INSERT INTO downloaded_files (user_id, file_id) VALUES (%s, %s)",
+                          (user_id, file_id))
 
     def add_required_channel(self, channel_id, channel_username, channel_title, added_by):
-        c = self.conn.cursor()
-        c.execute("INSERT OR IGNORE INTO required_channels (channel_id, channel_username, channel_title, added_by) VALUES (?, ?, ?, ?)",
-                  (channel_id, channel_username, channel_title, added_by))
-        self.conn.commit()
+        self.execute_query("""INSERT INTO required_channels (channel_id, channel_username, channel_title, added_by)
+                              VALUES (%s, %s, %s, %s)""",
+                          (channel_id, channel_username, channel_title, added_by))
 
     def get_required_channels(self):
-        c = self.conn.cursor()
-        c.execute("SELECT * FROM required_channels WHERE is_active = 1")
-        rows = c.fetchall()
-        return [{'channel_id': r[1], 'channel_username': r[2], 'channel_title': r[3]} for r in rows]
+        return self.execute_query("SELECT * FROM required_channels WHERE is_active = TRUE") or []
+
+    def update_admin_group(self, admin_id, group_id=None, backup_group_id=None):
+        if group_id is not None:
+            self.execute_query("UPDATE admins SET group_id = %s WHERE user_id = %s", (group_id, admin_id))
+        if backup_group_id is not None:
+            self.execute_query("UPDATE admins SET group_backup_id = %s WHERE user_id = %s", (backup_group_id, admin_id))
+
+    def get_system_stats(self):
+        result = self.execute_query("""SELECT
+            (SELECT COUNT(*) FROM users) as total_users,
+            (SELECT COUNT(*) FROM files) as total_files,
+            (SELECT COUNT(*) FROM admins) as total_admins""")
+        return result[0] if result else None
+
+    def close(self):
+        if self.connection and self.connection.is_connected():
+            self.connection.close()
