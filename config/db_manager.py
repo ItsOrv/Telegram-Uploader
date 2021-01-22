@@ -30,7 +30,8 @@ class DatabaseManager:
             port=self.config.mysql_port,
             user=self.config.mysql_user,
             password=self.config.mysql_password,
-            database=self.config.mysql_database
+            database=self.config.mysql_database,
+            autocommit=True
         )
 
     def reconnect(self):
