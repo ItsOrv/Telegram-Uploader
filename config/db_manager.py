@@ -6,10 +6,23 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 class DatabaseManager:
-    def __init__(self, config):
+    _instance = None
+
+    def __new__(cls, config=None):
+        if cls._instance is None:
+            cls._instance = super(DatabaseManager, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self, config=None):
+        if self._initialized:
+            return
+        if config is None:
+            raise ValueError("Config required for first init")
         self.config = config
         self.connection = None
         self.connect()
+        self._initialized = True
 
     def connect(self):
         self.connection = mysql.connector.connect(
