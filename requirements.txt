@@ -1,2 +1,17 @@
 telethon==1.38.1
 python-dotenv==1.0.1
+colorama==0.4.6
+
+#sudo apt install mysql-client-core-8.0
+mysql-connector-python==9.2.0
+# Dependencies for Telethon
+pyaes==1.6.1
+pyasn1==0.6.1
+rsa==4.9
+cryptg==0.4.0  # For faster file transfer
+pillow==10.2.0  # For image processing
+aiohttp==3.9.3  # For async HTTP requests
+python-magic==0.4.27  # For file type detection
+humanize==4.9.0  # For human-readable file sizes
+psutil==5.9.8  # For system monitoring
+aiomysql==0.2.0  # For async MySQL operations
