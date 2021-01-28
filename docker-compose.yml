@@ -3,6 +3,7 @@ version: '3.8'
 services:
   bot:
     build: .
+    env_file: .env
     depends_on:
       - db
     environment:
@@ -11,13 +12,15 @@ services:
 
   db:
     image: mysql:8.0
+    env_file: .env
     environment:
-      - MYSQL_ROOT_PASSWORD=rootpass
-      - MYSQL_DATABASE=telegram_uploader
-      - MYSQL_USER=telegram_user
-      - MYSQL_PASSWORD=changeme
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-telegram_uploader}
+      - MYSQL_USER=${MYSQL_USER:-telegram_user}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
   mysql_data:
