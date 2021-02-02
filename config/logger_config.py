@@ -18,7 +18,8 @@ class ColoredFormatter(logging.Formatter):
         record.levelname = f"{color}{record.levelname}{Style.RESET_ALL}"
         return super().format(record)
 
-log_level = getattr(logging, os.getenv('LOG_LEVEL', 'INFO').upper(), logging.INFO)
+_level_str = os.getenv('LOG_LEVEL', 'INFO').upper()
+log_level = getattr(logging, _level_str, logging.INFO)
 
 logger = logging.getLogger('telegram_uploader')
 logger.setLevel(log_level)
