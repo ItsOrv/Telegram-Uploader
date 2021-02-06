@@ -19,3 +19,16 @@ class SecurityManager:
 
     def check_banned(self, user_id, db):
         return db.is_banned(user_id)
+
+async def check_user_access(db, user_id: int) -> UserRole:
+    try:
+        if db.is_banned(user_id):
+            return UserRole.USER
+        if user_id == db.config.super_admin_id:
+            return UserRole.SUPER_ADMIN
+        if db.get_admin(user_id):
+            return UserRole.ADMIN
+        return UserRole.USER
+    except Exception as e:
+        logger.error(f"Error checking access for {user_id}: {e}", exc_info=True)
+        return UserRole.USER
