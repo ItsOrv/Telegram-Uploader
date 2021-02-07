@@ -51,6 +51,7 @@ async def check_user_access(db, user_id: int) -> UserRole:
             logger.warning(f"User {user_id} is banned")
             return UserRole.USER
         if user_id == db.config.super_admin_id:
+            logger.debug(f"User {user_id} is super admin")
             return UserRole.SUPER_ADMIN
         admin = db.get_admin(user_id)
         if admin:
