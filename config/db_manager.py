@@ -137,6 +137,14 @@ class DatabaseManager:
         if backup_group_id is not None:
             self.execute_query("UPDATE admins SET group_backup_id = %s WHERE user_id = %s", (backup_group_id, admin_id))
 
+    def log_user_activity(self, user_id, activity_type, details):
+        try:
+            self.execute_query("""INSERT INTO user_activity_log (user_id, activity_type, details)
+                                  VALUES (%s, %s, %s)""",
+                              (user_id, activity_type, details))
+        except Exception:
+            pass
+
     def get_system_stats(self):
         result = self.execute_query("""SELECT
             (SELECT COUNT(*) FROM users) as total_users,
