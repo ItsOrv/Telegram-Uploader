@@ -102,9 +102,14 @@ class DatabaseManager:
                           (user_id, reason))
 
     def unban_user(self, user_id):
-        if not self.is_banned(user_id):
-            raise ValueError("not banned")
-        self.execute_query("DELETE FROM banned_users WHERE user_id = %s", (user_id,))
+        try:
+            if not self.is_banned(user_id):
+                raise ValueError("این کاربر در لیست سیاه نیست")
+            self.execute_query("DELETE FROM banned_users WHERE user_id = %s", (user_id,))
+        except Exception as e:
+            from config.logger_config import logger
+            logger.error(f"Error in unban_user: {e}", exc_info=True)
+            raise
 
     def add_file(self, file_id, user_id, file_name, file_size, mime_type, uploader_id, caption=None):
         self.execute_query("""INSERT INTO files (file_id, user_id, file_name, file_size, mime_type, uploader_id, caption)
