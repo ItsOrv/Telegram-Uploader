@@ -157,6 +157,43 @@ class DatabaseManager:
             (SELECT COUNT(*) FROM admins) as total_admins""")
         return result[0] if result else None
 
+    def export_database(self, backup_path=None):
+        import subprocess, datetime
+        try:
+            default_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backups')
+            backup_dir = os.path.dirname(backup_path) if backup_path else default_dir
+            os.makedirs(backup_dir, exist_ok=True)
+            if not backup_path:
+                ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+                backup_path = os.path.join(backup_dir, f'backup_{ts}.sql')
+            env = os.environ.copy()
+            env['MYSQL_PWD'] = self.config.mysql_password
+            dump_cmd = ['mysqldump', f'--host={self.config.mysql_host}',
+                        f'--port={self.config.mysql_port}', f'--user={self.config.mysql_user}',
+                        '--single-transaction', self.config.mysql_database]
+            with open(backup_path, 'w') as f:
+                proc = subprocess.Popen(dump_cmd, stdout=f, stderr=subprocess.PIPE,
+                                        universal_newlines=True, env=env)
+                _, err = proc.communicate()
+                if proc.returncode != 0:
+                    raise Exception(f"mysqldump failed: {err}")
+            return backup_path
+        except Exception as e:
+            raise Exception(f"Failed to export database: {e}")
+
+    def import_database(self, backup_path):
+        import subprocess
+        if not os.path.exists(backup_path):
+            raise FileNotFoundError(f"Backup not found: {backup_path}")
+        cmd = ['mysql', f'--host={self.config.mysql_host}', f'--port={self.config.mysql_port}',
+               f'--user={self.config.mysql_user}', f'--password={self.config.mysql_password}',
+               self.config.mysql_database]
+        with open(backup_path, 'r') as f:
+            proc = subprocess.Popen(cmd, stdin=f, stderr=subprocess.PIPE, universal_newlines=True)
+            _, err = proc.communicate()
+            if proc.returncode != 0:
+                raise Exception(f"mysql import failed: {err}")
+
     def close(self):
         if self.connection and self.connection.is_connected():
             self.connection.close()
