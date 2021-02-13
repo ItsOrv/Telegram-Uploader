@@ -32,6 +32,8 @@ class SuperAdminHandlers:
             await self.ban_user_prompt(event)
         elif command == "unban_user":
             await self.unban_user_prompt(event)
+        elif command == "get_database_file":
+            await self.get_database_file(event)
 
     async def manage_admins(self, event):
         admins = self.db.get_all_admins() or []
@@ -80,3 +82,14 @@ class SuperAdminHandlers:
     async def unban_user_prompt(self, event):
         await event.edit("آیدی کاربر را برای رفع بن ارسال کنید:",
                          buttons=[Button.inline("انصراف", b"cancel_unban_user")])
+
+    async def get_database_file(self, event):
+        user_id = event.sender_id
+        try:
+            backup_path = self.db.export_database()
+            await self.bot.send_file(user_id, backup_path, caption="database backup")
+            import os
+            os.remove(backup_path)
+        except Exception as e:
+            logger.error(f"Backup error: {e}", exc_info=True)
+            await event.respond(f"خطا در تهیه بکاپ: {e}")
