@@ -163,6 +163,8 @@ class DatabaseManager:
             default_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backups')
             backup_dir = os.path.dirname(backup_path) if backup_path else default_dir
             os.makedirs(backup_dir, exist_ok=True)
+            if not os.access(backup_dir, os.W_OK):
+                raise Exception(f"Backup dir not writable: {backup_dir}")
             if not backup_path:
                 ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
                 backup_path = os.path.join(backup_dir, f'backup_{ts}.sql')
