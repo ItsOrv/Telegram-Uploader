@@ -111,10 +111,10 @@ class DatabaseManager:
             logger.error(f"Error in unban_user: {e}", exc_info=True)
             raise
 
-    def add_file(self, file_id, user_id, file_name, file_size, mime_type, uploader_id, caption=None):
-        self.execute_query("""INSERT INTO files (file_id, user_id, file_name, file_size, mime_type, uploader_id, caption)
-                              VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-                          (file_id, user_id, file_name, file_size, mime_type, uploader_id, caption))
+    def add_file(self, file_id, hash_file, admin_id, group_id, backup_group_id, file_name, file_size, download_link):
+        self.execute_query("""INSERT INTO files (file_id, hash_file, admin_id, group_id, backup_group_id, file_name, file_size, download_link)
+                              VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                          (file_id, hash_file, admin_id, group_id, backup_group_id, file_name, file_size, download_link))
 
     def get_file(self, file_id):
         result = self.execute_query("SELECT * FROM files WHERE file_id = %s", (file_id,))

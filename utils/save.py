@@ -11,15 +11,6 @@ class Save:
         self.db = db
         logger.debug("Save utility initialized successfully")
 
-    def get_file_caption(self, original_caption: str = None) -> str:
-        """Get complete caption with default text."""
-        default_caption = self.db.get_config('default_caption')
-        default_text = default_caption.get('value', '') if default_caption else ''
-
-        if original_caption:
-            return f"{original_caption}\n\n{default_text}"
-        return default_text
-
     async def save_file_to_group(self, message, user_id):
         """Save file to group and database."""
         try:
@@ -39,27 +30,30 @@ class Save:
             if backup_group_id:
                 await self.bot.send_file(backup_group_id, file)
 
+            raw = f"{sent_message.id}{group_id}{user_id}"
+            hash_file = hashlib.md5(raw.encode()).hexdigest()
+            download_link = f"https://t.me/{self.config.bot_username}?start={hash_file}"
+
             file_info = {
                 'file_id': str(sent_message.id),
+                'hash_file': hash_file,
                 'group_id': str(group_id),
                 'file_name': file.name,
                 'file_size': file.size,
                 'mime_type': file.mime_type,
                 'uploader_id': user_id,
-                'download_link': f"https://t.me/{self.config.bot_username}?start={sent_message.id}"
+                'download_link': download_link
             }
-
-            raw = f"{file_info['file_id']}{group_id}{user_id}"
-            hash_file = hashlib.md5(raw.encode()).hexdigest()
-            file_info['hash_file'] = hash_file
 
             self.db.add_file(
                 file_id=file_info['file_id'],
-                user_id=user_id,
+                hash_file=hash_file,
+                admin_id=user_id,
+                group_id=group_id,
+                backup_group_id=backup_group_id,
                 file_name=file_info['file_name'],
                 file_size=file_info['file_size'],
-                mime_type=file_info['mime_type'],
-                uploader_id=user_id
+                download_link=download_link
             )
 
             logger.info(f"File saved successfully: {hash_file}")

@@ -77,7 +77,7 @@ class UserStart:
         channels = self.db.get_required_channels()
 
         for channel in channels:
-            buttons.append([Button.url(channel['channel_name'], f"https://t.me/{channel['channel_id']}")])
+            buttons.append([Button.url(channel['channel_title'], f"https://t.me/{channel['channel_username']}")])
 
         buttons.append([Button.inline("عضو شدم", data=f"check_membership:{file_hash}")])
         logger.debug(f"Created buttons for {len(channels)} channels")
@@ -86,7 +86,7 @@ class UserStart:
     async def forward_message(self, file_hash, user_id):
         logger.info(f"Forwarding file {file_hash} to user {user_id}")
 
-        file_info = self.send.get_file_info(file_hash)
+        file_info = self.db.get_file_by_hash(file_hash)
         if file_info:
             try:
                 message_id = file_info['file_id']
