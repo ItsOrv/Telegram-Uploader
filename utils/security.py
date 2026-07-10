@@ -36,6 +36,7 @@ def require_roles(*required_roles):
                     return await func(self, event, *args, **kwargs)
                 else:
                     await event.respond("شما دسترسی لازم برای این عملیات را ندارید.")
+                    await _notify_super_admin(self, event, func.__name__, user_id, user_role, required_roles)
                     return None
             except Exception as e:
                 logger.error(f"Error checking user access: {e}", exc_info=True)
@@ -43,6 +44,30 @@ def require_roles(*required_roles):
                 return None
         return wrapper
     return decorator
+
+async def _notify_super_admin(handler, event, func_name, user_id, user_role, required_roles):
+    """Send a security alert to the super admin on an unauthorized handler call."""
+    try:
+        super_admin_id = handler.config.super_admin_id
+        if user_id == super_admin_id:
+            return
+        needed = ", ".join(r.name for r in required_roles)
+        try:
+            command = event.data.decode('utf-8')
+        except Exception:
+            command = getattr(getattr(event, 'message', None), 'message', func_name)
+        alert = (
+            "هشدار امنیتی: فراخوانی غیرمجاز\n"
+            f"کاربر: {user_id}\n"
+            f"رول کاربر: {user_role.name}\n"
+            f"هندلر: {func_name}\n"
+            f"دستور: {command}\n"
+            f"رول لازم: {needed}"
+        )
+        await handler.bot.send_message(super_admin_id, alert)
+        logger.warning(f"Unauthorized call to {func_name} by {user_id} ({user_role.name}); super admin alerted")
+    except Exception as e:
+        logger.error(f"Failed to send security alert: {e}", exc_info=True)
 
 async def check_user_access(db, user_id: int) -> UserRole:
     try:

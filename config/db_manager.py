@@ -124,6 +124,13 @@ class DatabaseManager:
         result = self.execute_query("SELECT * FROM files WHERE hash_file = %s", (file_hash,))
         return result[0] if result else None
 
+    def delete_file(self, file_hash):
+        row = self.get_file_by_hash(file_hash)
+        if not row:
+            raise ValueError("file not found")
+        self.execute_query("DELETE FROM files WHERE hash_file = %s", (file_hash,))
+        return row
+
     def add_file_download(self, user_id, file_id):
         self.execute_query("INSERT INTO downloaded_files (user_id, file_id) VALUES (%s, %s)",
                           (user_id, file_id))
@@ -157,7 +164,7 @@ class DatabaseManager:
             (SELECT COUNT(*) FROM admins) as total_admins""")
         return result[0] if result else None
 
-    def export_database(self, backup_path=None):
+    def export_database(self, backup_path=None, timeout=60):
         import subprocess, datetime
         try:
             default_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backups')
@@ -176,7 +183,12 @@ class DatabaseManager:
             with open(backup_path, 'w') as f:
                 proc = subprocess.Popen(dump_cmd, stdout=f, stderr=subprocess.PIPE,
                                         universal_newlines=True, env=env)
-                _, err = proc.communicate()
+                try:
+                    _, err = proc.communicate(timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.communicate()
+                    raise Exception(f"mysqldump timed out after {timeout}s")
                 if proc.returncode != 0:
                     raise Exception(f"mysqldump failed: {err}")
             return backup_path

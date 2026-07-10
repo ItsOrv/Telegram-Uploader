@@ -4,7 +4,7 @@ from telethon.tl.types import Channel
 from config.constants import Constants
 from utils.keyboards import Keyboards
 from config.db_manager import DatabaseManager
-from utils.security import check_user_access, UserRole
+from utils.security import check_user_access, require_roles, UserRole
 from config.logger_config import logger
 
 class StartHandlers:
@@ -120,6 +120,7 @@ class StartHandlers:
         buttons.append([Button.inline("عضو شدم", data=f"check_subscription:{file_hash}")])
         return buttons
 
+    @require_roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
     async def handle_set_main(self, event):
         admin_id = event.sender_id
         group_id = event.chat_id
@@ -127,6 +128,7 @@ class StartHandlers:
         self.db.update_admin_group(admin_id, group_id=group_id)
         await event.respond("گروه اصلی ست شد")
 
+    @require_roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
     async def handle_set_backup(self, event):
         admin_id = event.sender_id
         group_id = event.chat_id

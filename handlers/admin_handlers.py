@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import asyncio
 from telethon import events, Button
 from telethon.tl.types import ChannelParticipantsAdmins
 from config.constants import Constants
@@ -9,6 +10,8 @@ from config.db_manager import DatabaseManager
 from utils.security import require_roles, UserRole
 from utils.save import Save
 from config.logger_config import logger
+
+FILE_DELETE_TIMEOUT = 15
 
 class AdminHandlers:
     def __init__(self, bot, config, db):
@@ -97,9 +100,38 @@ class AdminHandlers:
             chats=event.chat_id, incoming=True
         ))
 
-    @require_roles(UserRole.ADMIN)
+    @require_roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
     async def delete_file_admin(self, event):
-        await event.edit("هش فایل را ارسال کنید:")
+        await event.edit("هش فایل را برای حذف ارسال کنید:")
+
+        async def handle_hash(hash_event):
+            file_hash = (hash_event.text or "").strip()
+            try:
+                await asyncio.wait_for(self._delete_file_by_hash(file_hash),
+                                       timeout=FILE_DELETE_TIMEOUT)
+                await hash_event.respond("فایل حذف شد.")
+            except asyncio.TimeoutError:
+                logger.error(f"File delete timed out for hash {file_hash}")
+                await hash_event.respond("حذف فایل بیش از حد طول کشید و لغو شد. لطفا دوباره تلاش کنید.")
+            except ValueError:
+                await hash_event.respond(self.constants.file.NOT_FOUND)
+            except Exception as e:
+                logger.error(f"Error deleting file {file_hash}: {e}", exc_info=True)
+                await hash_event.respond(self.constants.ERROR_MESSAGE)
+            finally:
+                self.bot.remove_event_handler(handle_hash)
+
+        self.bot.add_event_handler(handle_hash, events.NewMessage(
+            chats=event.chat_id, incoming=True
+        ))
+
+    async def _delete_file_by_hash(self, file_hash):
+        loop = asyncio.get_event_loop()
+        row = await loop.run_in_executor(None, self.db.delete_file, file_hash)
+        try:
+            await self.bot.delete_messages(int(row['group_id']), int(row['file_id']))
+        except Exception as e:
+            logger.warning(f"DB row removed but group message delete failed for {file_hash}: {e}")
 
     async def cancel(self, event):
         await event.edit("لغو شد.", buttons=self.keyboards.get_admin_panel_buttons())

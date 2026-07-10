@@ -1,6 +1,10 @@
+import asyncio
 from telethon import events, Button
 from config.logger_config import logger
 from utils.keyboards import Keyboards
+from utils.security import require_roles, UserRole
+
+DB_EXPORT_TIMEOUT = 60
 
 class SuperAdminHandlers:
     def __init__(self, bot, config, admin_handlers, db):
@@ -10,13 +14,11 @@ class SuperAdminHandlers:
         self.db = db
         self.keyboards = Keyboards(config)
 
+    @require_roles(UserRole.SUPER_ADMIN)
     async def handle_super_admin_commands(self, event):
         command = event.data.decode('utf-8')
         user_id = event.sender_id
         logger.info(f"Super admin command: {command} from {user_id}")
-
-        if user_id != self.config.super_admin_id:
-            return
 
         if command == "back_to_super_admin_panel":
             await event.edit("پنل سوپر ادمین", buttons=self.keyboards.get_super_admin_panel_buttons())
@@ -86,10 +88,17 @@ class SuperAdminHandlers:
     async def get_database_file(self, event):
         user_id = event.sender_id
         try:
-            backup_path = self.db.export_database()
+            loop = asyncio.get_event_loop()
+            backup_path = await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: self.db.export_database(timeout=DB_EXPORT_TIMEOUT)),
+                timeout=DB_EXPORT_TIMEOUT + 5
+            )
             await self.bot.send_file(user_id, backup_path, caption="database backup")
             import os
             os.remove(backup_path)
+        except asyncio.TimeoutError:
+            logger.error("Database export timed out")
+            await event.respond("تهیه بکاپ دیتابیس بیش از حد طول کشید و لغو شد. لطفا دوباره تلاش کنید.")
         except Exception as e:
             logger.error(f"Backup error: {e}", exc_info=True)
             await event.respond(f"خطا در تهیه بکاپ: {e}")
